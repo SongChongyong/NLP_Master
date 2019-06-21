@@ -141,6 +141,8 @@ if __name__ == '__main__':
     x_val, y_val = process_file(val_dir, word_to_id, cat_to_id, max_length=600)
     x_test, y_test = process_file(test_dir, word_to_id, cat_to_id, max_length=600)
     
-    print("\n第一条影评中的字词数: {}, 第二条影评中的字词数: {}".format(len(x_train[0]), len(y_train[1])))
+    print("\nx_train.shape: {}, y_train.shape: {}".format(x_train.shape, y_train.shape))
+    print("\nx_val.shape: {}, y_val.shape: {}".format(x_val.shape, y_val.shape))
+    print("\nx_test.shape: {}, y_test.shape: {}".format(x_test.shape, y_test.shape))
            
            

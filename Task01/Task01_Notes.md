@@ -108,7 +108,7 @@ THUCNews是根据新浪新闻RSS订阅频道2005~2011年间的历史数据筛选
 
 ### 2.2 THUCNews数据集预处理
 
-`cnews_loader.py`为数据的预处理文件。
+`cnews_load_explore.py`为数据的预处理文件。
 
 - `read_file()`: 读取文件数据;
 - `build_vocab()`: 构建词汇表，使用字符级的表示，这一函数会将词汇表存储下来，避免每一次重复处理;
@@ -120,17 +120,27 @@ THUCNews是根据新浪新闻RSS订阅频道2005~2011年间的历史数据筛选
 
 经过数据预处理，数据的格式如下：
 
-| Data    | Shape        | Data    | Shape       |
-| ------- | ------------ | ------- | ----------- |
-| x_train | [50000, 600] | y_train | [50000, 10] |
-| x_val   | [5000, 600]  | y_val   | [5000, 10]  |
-| x_test  | [10000, 600] | y_test  | [10000, 10] |
+```python
+# 打印处理好数据的形状
+    print("\nx_train.shape: {}, y_train.shape: {}".format(x_train.shape, y_train.shape))
+    print("\nx_val.shape: {}, y_val.shape: {}".format(x_val.shape, y_val.shape))
+    print("\nx_test.shape: {}, y_test.shape: {}".format(x_test.shape, y_test.shape))
+    
+    '''
+    x_train.shape: (50000, 600), y_train.shape: (50000, 10)
+
+    x_val.shape: (5000, 600), y_val.shape: (5000, 10)
+
+    x_test.shape: (10000, 600), y_test.shape: (10000, 10)
+
+    '''     
+```
 
 
 
 ## 03 学习召回率、准确率、ROC曲线、AUC、PR曲线这些基本概念
 
-
+这个笔记晚上再补,白天有事.
 
 
 

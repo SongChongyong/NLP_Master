@@ -141,8 +141,17 @@ if __name__ == '__main__':
     x_val, y_val = process_file(val_dir, word_to_id, cat_to_id, max_length=600)
     x_test, y_test = process_file(test_dir, word_to_id, cat_to_id, max_length=600)
     
+    # 打印处理好数据的形状
     print("\nx_train.shape: {}, y_train.shape: {}".format(x_train.shape, y_train.shape))
     print("\nx_val.shape: {}, y_val.shape: {}".format(x_val.shape, y_val.shape))
     print("\nx_test.shape: {}, y_test.shape: {}".format(x_test.shape, y_test.shape))
-           
+    
+    '''
+    x_train.shape: (50000, 600), y_train.shape: (50000, 10)
+
+    x_val.shape: (5000, 600), y_val.shape: (5000, 10)
+
+    x_test.shape: (10000, 600), y_test.shape: (10000, 10)
+
+    '''     
            

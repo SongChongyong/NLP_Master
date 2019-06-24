@@ -3,6 +3,10 @@
 
 此部分参考了博客[NLP系列——(2)特征提取](https://blog.csdn.net/weixin_40593658/article/details/90181471)
 
+文本分析流程：
+
+![文本分析流程](./pictures/文本分析流程.png)
+
 
 
 ## 02 语言模型各种概念
@@ -22,6 +26,18 @@ CondaIOError: Missing write permissions in: /home/terence/anaconda3
 $ sudo chown -R terence /home/terence/anaconda3
 # 修改权限后再次安装jieba组件
 $ conda install -c conda-forge jieba           # 成功
+```
+
+3.2 去停用词；构造词表
+
+停用词就是句子中没什么必要的单词，去掉他们以后对理解整个句子的语义没有影响。文本中，会存在大量的虚词、代词或者没有特定含义的动词、名词，这些词语对文本分析起不到任何的帮助，我们往往希望能去掉这些“停用词”.
+
+在英文中，例如，“a”，“the”,“to"，“their”等冠词，借此，代词… 我们可以直接用nltk中提供的英文停用词表.
+
+```py
+sentence = "this is a apple"
+filter_sentence= [w for w in sentence.split(' ') if w not in stopwords.words('english')]
+print(filter_sentence)
 ```
 
 

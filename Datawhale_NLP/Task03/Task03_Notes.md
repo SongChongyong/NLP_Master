@@ -3,54 +3,84 @@
 
 此部分学习了吴军<数学之美>中[数学之美 系列九 -- 如何确定网页和查询的相关性](https://china.googleblog.com/2006/06/blog-post_3066.html)
 
-单文本词频(Term Frequency):关键词的次数除以网页的总字数
-
-即
-
+**单文本词频(Term Frequency)**:  用于衡量一个词在一个文件中的出现频率
+$$
+TF_w=关键词w的次数/网页的总字数
+$$
 需要给汉语中的每一个词给一个权重，这个权重的设定必须满足下面两个条件：
 
 - 1. 一个词预测主题能力越强，权重就越大，反之，权重就越小。我们在网页中看到“原子能”这个词，或多或少地能了解网页的主题。我们看到“应用”一次，对主题基本上还是一无所知。因此，“原子能“的权重就应该比应用大。
 
 - 2. 应删除词的权重应该是零。
 
-在信息检索中，使用最多的权重是“逆文本频率指数” （Inverse document frequency 缩写为ＩＤＦ），它的公式为ｌｏｇ（Ｄ／Ｄｗ）其中Ｄ是全部网页数。
+在信息检索中，使用最多的权重是**“逆文本频率指数” （Inverse document frequency 缩写为 IDF）**：用于衡量一个词的重要性
+
+$$
+IDF_w=log D/D_w
+$$
+​		其中D为全部网页数，D(w)为出现关键词w的网页个数
 
 
 
+为了避免D(w)为0的情况，IDF通常需要平滑化，常用的IDF平滑后的公式之一为：
+$$
+IDF_w=log (N+1)/(N_w+1)+1
+$$
+**equency/Inverse document frequency):**
+$$
+TF-TDF = TF_1*IDF_1 + TF_2*IDF_2 +...+ TF_n*IDF_n
+$$
 
 
-## 02 语言模型各种概念
+## 02 文本矩阵化，使用词袋模型，以TF-IDF特征值为权重
 
-## 03 文本矩阵化
+见TF_IDF_example.py
 
-### 3.1 分词--结巴分词
+## 03 互信息的原理
 
-结巴分词的学习主要参考[“结巴”中文分词：做最好的 Python 中文分词组件](https://github.com/fxsjy/jieba)
+**信息熵(Entropy):**
 
-结巴分词组件的安装我由于是用的anaconda, 所以使用conda install -c conda-forge jieba:
+![信息熵](./pictures/01.png)
 
+信息熵是对不确定性的衡量。变量的不确定性越大，熵也越大，信息量也就越大。
+
+X定义在Y条件下的**条件熵**：
+
+![条件熵](./pictures/02.png)
+
+
+
+假设有两个随机事件，它们的**互信息(Mutual Information)**定义为：
+
+![互信息](./pictures/03.png)
+
+其衡量的是两个随机变量之间的相关性，即一个随机变量中包含的关于另一个随机变量的信息量。
+
+互信息 和 H(X), H(X/Y) 的关系：
+$$
+I(X;Y)=H(X)-H(X/Y)
+$$
+
+
+
+互信息、条件熵与联合熵的区别与联系：
+
+![互信息&条件熵&联合熵](./pictures/04互信息&条件熵&联合熵.png)
+
+
+
+## 04 互信息的应用
+
+```python
+from sklearn import metrics as mr
+
+# 互信息(Mutual Information)
+labels_true = [0, 0, 0, 1, 1, 1]
+labels_pred = [0, 0, 1, 1, 2, 2]
+MI = mr.adjusted_mutual_info_score(labels_true, labels_pred)  
+print("Matual Information = "+str(MI))
+# Matual Information = 0.2250422831983088
 ```
-$ conda install -c conda-forge jieba
-CondaIOError: Missing write permissions in: /home/terence/anaconda3
-# 显示没有写入anaconda3的权限,解决error:chown更改目录或文件的用户名和用户组, 这样就有写入权限了
-$ sudo chown -R terence /home/terence/anaconda3
-# 修改权限后再次安装jieba组件
-$ conda install -c conda-forge jieba           # 成功
-```
-
-3.2 去停用词；构造词表
-
-停用词就是句子中没什么必要的单词，去掉他们以后对理解整个句子的语义没有影响。文本中，会存在大量的虚词、代词或者没有特定含义的动词、名词，这些词语对文本分析起不到任何的帮助，我们往往希望能去掉这些“停用词”.
-
-在英文中，例如，“a”，“the”,“to"，“their”等冠词，借此，代词… 我们可以直接用nltk中提供的英文停用词表.
-
-```py
-sentence = "this is a apple"
-filter_sentence= [w for w in sentence.split(' ') if w not in stopwords.words('english')]
-print(filter_sentence)
-```
-
-
 
 
 

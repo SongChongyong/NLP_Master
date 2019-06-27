@@ -14,12 +14,14 @@ transformer = TfidfTransformer()
 tfidf = transformer.fit_transform(vectorizer.fit_transform(corpus))  
 # print (tfidf)
 
+
+
 # 方法二：直接用TfidfVectorizer完成向量化与TF-IDF预处理
 from sklearn.feature_extraction.text import TfidfVectorizer
 tfidf2 = TfidfVectorizer()
 re = tfidf2.fit_transform(corpus)
 
-# 得到语料库所有不重复的词
+# get_feature_names()函数得到语料库所有不重复的词
 print(tfidf2.get_feature_names())
 '''
 ['and', 'apple', 'car', 'china', 'come', 'in', 'is', 
@@ -56,7 +58,7 @@ print (re.toarray())
   0.         0.35657982 0.         0.28113163 0.         0.35657982
   0.35657982]]
 '''
-
+print (re)
 '''
 两种方法的输出结果都是：
   (0, 4)    0.4424621378947393

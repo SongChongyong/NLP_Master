@@ -10,9 +10,11 @@
 
 ##  02 SVM模型
 
-
+* [svm](./svm.py)
 
 ## 03 LDA主题模型
+
+
 
 ##  04 DataWhale 任务4要求 
 

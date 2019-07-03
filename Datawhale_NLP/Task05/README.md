@@ -86,7 +86,7 @@ one hot在特征提取上属于词袋模型（bag of words）。关于如何使�
 
 待整理
 
-
+3.4 [word2vec实例](./word2vec.py)
 
 ##  04 DataWhale 任务5要求 
 
@@ -109,3 +109,5 @@ Task5 文本表示：从one-hot到word2vec (2 days)
 3. **peghoty博客**： [word2vec 中的数学原理详解（三）背景知识](<https://blog.csdn.net/itplus/article/details/37969817>)
 
 4. [特征提取方法: one-hot 和TF-IDF](https://www.cnblogs.com/lianyingteng/p/7755545.html)
+
+5. [用gensim学习word2vec](https://www.cnblogs.com/pinard/p/7278324.html)

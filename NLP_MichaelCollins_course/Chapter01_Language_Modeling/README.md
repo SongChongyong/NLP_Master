@@ -76,6 +76,30 @@ $$
   p(x_1...x_n)=\prod_{i=1}^nq(x_i|x_{i-2},x_{i-1})
   $$
 
+## 02 Evaluating language models: perplexity (迷惑度)
+
+### 2.1 Perplexity (迷惑度)
+
+![Perplexity](./pictures/01_Perplexity.png)
+
+**The smaller** the value of perplexity, **the better** the language model is at modeling unseen data.
+
+### 2.2 Typical Values of Perplexity
+
+Results from Goodman (A bit of progress in language modeling"), where |V|= 50000
+
+- A trigram model: Perplexity = 74
+- A bigram model: Perplexity = 137
+- A unigram model: Perplexity = 955
+
+So the trigram model clearly gives a big improvement over bigram and unigram models.
+
+## 03 Estimation techniques 平滑估算
+
+### 3.1 Linear interpolation 线性插值
+
+### 3.2 Discounting methods 折扣方法
+
 
 
 

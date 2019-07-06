@@ -10,3 +10,6 @@
 
 在参加Datawhale NLP 学习小组的同时,学习MichaelCollins在coursea的课程视频及笔记.
 
+## 03 <Python自然语言处理>学习
+
+学习<Python自然语言处理>一书的学习记录.

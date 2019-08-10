@@ -1,0 +1,496 @@
+# coding: utf-8
+
+# CNN句子分类
+# # Sentence Classification with Convolution Neural Networks
+# [Paper](https://arxiv.org/pdf/1408.5882.pdf): Convolutional Neural Networks for Sentence Classification by Yoon Kim
+
+
+from __future__ import print_function
+import collections
+import math
+import numpy as np
+import os
+import random
+import tensorflow as tf
+import zipfile
+from matplotlib import pylab
+from six.moves import range
+from six.moves.urllib.request import urlretrieve
+import tensorflow as tf 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+# =====下载和检查数据 
+'''
+从  http://cogcomp.cs.illinois.edu/Data/QA/QC/ 下载数据
+数据包中输入是一个问题，输出是问题的答案(respective type各自的类型)
+如 输入：Who was Abraham Lincon? 输出： Human
+'''
+
+
+url = 'http://cogcomp.org/Data/QA/QC/'
+dir_name = 'question-classif-data'
+
+def maybe_download(dir_name, filename, expected_bytes):
+  """Download a file if not present, and make sure it's the right size."""
+  if not os.path.exists(dir_name):
+        os.mkdir(dir_name)
+  if not os.path.exists(os.path.join(dir_name,filename)):
+    filename, _ = urlretrieve(url + filename, os.path.join(dir_name,filename))
+  print(os.path.join(dir_name,filename))
+  statinfo = os.stat(os.path.join(dir_name,filename))
+  if statinfo.st_size == expected_bytes:
+    print('Found and verified %s' % os.path.join(dir_name,filename))
+  else:
+    print(statinfo.st_size)
+    raise Exception(
+      'Failed to verify ' + os.path.join(dir_name,filename) + '. Can you get to it with a browser?')
+  return filename
+
+filename = maybe_download(dir_name, 'train_1000.label', 60774)
+test_filename = maybe_download(dir_name, 'TREC_10.label',23354)
+
+
+# 检查文件是否存在
+filenames = ['train_1000.label','TREC_10.label']
+num_files = len(filenames)
+for i in range(len(filenames)):
+    file_exists = os.path.isfile(os.path.join(dir_name,filenames[i]))
+    assert file_exists
+print('Files found and verified.')
+
+'''
+question-classif-data\train_1000.label
+Found and verified question-classif-data\train_1000.label
+question-classif-data\TREC_10.label
+Found and verified question-classif-data\TREC_10.label
+Files found and verified.
+'''
+
+# ======= Loading and Preprocessing Data 读取并预处理数据
+# 记录最长句子的长度，以便后面填充短的句子
+
+max_sent_length = 0 
+
+def read_data(filename):
+  '''
+     读取数据，返回字符串列表，且字符串都是小写字母
+  '''
+  global max_sent_length
+  questions = []
+  labels = []
+  with open(filename,'r',encoding='latin-1') as f:        
+    for row in f:
+        row_str = row.split(":")
+        lb,q = row_str[0],row_str[1]
+        q = q.lower()
+        labels.append(lb)
+        questions.append(q.split())        
+        if len(questions[-1])>max_sent_length:
+            max_sent_length = len(questions[-1])
+  return questions,labels
+
+# 处理训练和测试数据
+for i in range(num_files):    
+    print('\nProcessing file %s'%os.path.join(dir_name,filenames[i]))
+    if i==0:
+        # 处理训练数据
+        train_questions,train_labels = read_data(os.path.join(dir_name,filenames[i]))
+        # 确保获取了所有的问题和对应标签
+        assert len(train_questions)==len(train_labels)
+    elif i==1:
+        # 处理测试数据
+        test_questions,test_labels = read_data(os.path.join(dir_name,filenames[i]))
+        # 确保获取了所有的问题和对应标签
+        assert len(test_questions)==len(test_labels)
+        
+    # 分别打印训练集和测试集中5条数据来检查数据处理状况
+    for j in range(5):
+        print('\tQuestion %d: %s' %(j,train_questions[j]))
+        print('\tLabel %d: %s\n'%(j,train_labels[j]))
+        
+print('Max Sentence Length: %d'%max_sent_length)      #打印一下最大句子长度
+print('\nNormalizing all sentences to same length')
+
+'''
+Processing file question-classif-data\train_1000.label
+    Question 0: ['manner', 'how', 'did', 'serfdom', 'develop', 'in', 'and', 'then', 'leave', 'russia', '?']
+    Label 0: DESC
+
+    Question 1: ['cremat', 'what', 'films', 'featured', 'the', 'character', 'popeye', 'doyle', '?']
+    Label 1: ENTY
+
+    Question 2: ['manner', 'how', 'can', 'i', 'find', 'a', 'list', 'of', 'celebrities', "'", 'real', 'names', '?']
+    Label 2: DESC
+
+    Question 3: ['animal', 'what', 'fowl', 'grabs', 'the', 'spotlight', 'after', 'the', 'chinese', 'year', 'of', 'the', 'monkey', '?']
+    Label 3: ENTY
+
+    Question 4: ['exp', 'what', 'is', 'the', 'full', 'form', 'of', '.com', '?']
+    Label 4: ABBR
+
+
+Processing file question-classif-data\TREC_10.label
+    Question 0: ['manner', 'how', 'did', 'serfdom', 'develop', 'in', 'and', 'then', 'leave', 'russia', '?']
+    Label 0: DESC
+
+    Question 1: ['cremat', 'what', 'films', 'featured', 'the', 'character', 'popeye', 'doyle', '?']
+    Label 1: ENTY
+
+    Question 2: ['manner', 'how', 'can', 'i', 'find', 'a', 'list', 'of', 'celebrities', "'", 'real', 'names', '?']
+    Label 2: DESC
+
+    Question 3: ['animal', 'what', 'fowl', 'grabs', 'the', 'spotlight', 'after', 'the', 'chinese', 'year', 'of', 'the', 'monkey', '?']
+    Label 3: ENTY
+
+    Question 4: ['exp', 'what', 'is', 'the', 'full', 'form', 'of', '.com', '?']
+    Label 4: ABBR
+
+Max Sentence Length: 33
+
+Normalizing all sentences to same length
+'''
+
+# ==========Padding Shorter Sentences 填充短句子到同一长度
+
+# Padding training data 填充训练集
+for qi,que in enumerate(train_questions):
+    for _ in range(max_sent_length-len(que)):
+        que.append('PAD')
+    assert len(que)==max_sent_length
+    train_questions[qi] = que
+print('Train questions padded')
+
+# Padding testing data  填充测试集
+for qi,que in enumerate(test_questions):
+    for _ in range(max_sent_length-len(que)):
+        que.append('PAD')
+    assert len(que)==max_sent_length
+    test_questions[qi] = que
+print('\nTest questions padded')  
+
+# 打印测试集中一条数据检查填充情况
+print('\nSample test question: %s',test_questions[0])
+
+'''
+Train questions padded
+
+Test questions padded
+
+Sample test question: %s ['dist', 'how', 'far', 'is', 'it', 'from', 'denver', 'to', 'aspen', '?', 'PAD', 
+                          'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 
+                          'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD', 'PAD']
+'''
+
+# ==========================Building the Dictionaries 构建词典
+'''
+以"I like to go to school"为例
+ 
+* `dictionary`: maps a string word to an ID (e.g. {I:0, like:1, to:2, go:3, school:4})
+* `reverse_dictionary`: maps an ID to a string word (e.g. {0:I, 1:like, 2:to, 3:go, 4:school}
+* `count`: List of list of (word, frequency) elements (e.g. [(I,1),(like,1),(to,2),(go,1),(school,1)]
+* `data` : Contain the string of text we read, where string words are replaced with word IDs (e.g. [0, 1, 2, 3, 2, 4])
+# 由于词典很小，所以这里不需要将低频率单词替换为 "UNK" 
+# 遍历单词列表，对其中的每一个单词，判断是否在dictionary中，在则转化为编号，不在则转化为0
+# 最后返回转化后的编码(data)、每个单词的频数统计(count)、词汇表(dictionary)及其反转的形式(reverse_dictionary)。
+'''
+def build_dataset(questions):
+    words = []
+    data_list = []
+    count = []
+    
+    # 先创建一个包含所有单词的列表
+    for d in questions:
+        words.extend(d)
+    print('%d Words found.'%len(words))    # 49500 Words found.
+    print('Found %d words in the vocabulary. '%len(collections.Counter(words).most_common()))  # Found 3369 words in the vocabulary. 
+    
+    # 按照单词的出现频率排列单词
+    count.extend(collections.Counter(words).most_common())
+    
+    # 根据现有单词词典长度，为每个单词创建ID,并把它们加入词典 
+    # Create an ID for each word by giving the current length of the dictionary and adding that item to the dictionary
+    dictionary = dict()
+    for word, _ in count:
+        dictionary[word] = len(dictionary)
+    
+    # 遍历所有文本，并将字符串单词替换为该索引处找到的单词的ID
+    # Traverse through all the text and replace the string words with the ID of the word found at that index
+    for d in questions:
+        data = list()
+        for word in d:
+            index = dictionary[word]        
+            data.append(index)
+            
+        data_list.append(data)
+        
+    reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys())) 
+    
+    # 最后返回转化后的ID(data_list)、每个单词的频数统计(count)、词汇表(dictionary)及其反转的形式(reverse_dictionary)
+    return data_list, count, dictionary, reverse_dictionary
+
+# 创建一个叫all_questions的数据集，把训练集和测试集中的questions数据传进去
+# Create a dataset with both train and test questions
+all_questions = list(train_questions)
+all_questions.extend(test_questions)
+
+# 用上面创建的数据集来创建词汇表(all_question_ind)
+all_question_ind, count, dictionary, reverse_dictionary = build_dataset(all_questions)
+
+# 打印最终构建的词汇表all_questions_ind的一些数据
+print('All words (count)', count[:5])
+print('\n0th entry in dictionary: %s',reverse_dictionary[0])
+print('\nSample data', all_question_ind[0])
+print('\nSample data', all_question_ind[1])
+print('\nVocabulary: ',len(dictionary))
+vocabulary_size = len(dictionary)
+
+print('\nNumber of training questions: ',len(train_questions))
+print('Number of testing questions: ',len(test_questions))
+
+'''
+49500 Words found.
+Found 3369 words in the vocabulary. 
+All words (count) [('PAD', 34407), ('?', 1454), ('the', 999), ('what', 963), ('is', 587)]
+
+0th entry in dictionary: %s PAD
+
+Sample data [38, 12, 19, 1006, 1007, 6, 28, 1008, 1009, 544, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+Sample data [44, 3, 545, 1010, 2, 163, 1011, 1012, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+Vocabulary:  3369
+
+Number of training questions:  1000
+Number of testing questions:  500
+'''
+
+# =============================== Generating Batches of Data 生成批量数据
+batch_size = 16 # 一次处理16个问题
+sent_length = max_sent_length    # Max Sentence Length: 33
+
+num_classes = 6 # Number of classes
+# 数据集中所有的问题类型
+all_labels = ['NUM','LOC','HUM','DESC','ENTY','ABBR'] 
+
+class BatchGenerator(object):
+    '''
+            生成批量数据
+    '''
+    def __init__(self,batch_size,questions,labels):
+        self.questions = questions
+        self.labels = labels
+        self.text_size = len(questions)
+        self.batch_size = batch_size
+        self.data_index = 0
+        assert len(self.questions)==len(self.labels)
+        
+    def generate_batch(self):
+        '''
+        Data generation function. This outputs two matrices
+        inputs: a batch of questions where each question is a tensor 
+                of size [sent_length, vocabulary_size] with each word one-hot-encoded
+        labels_ohe: one-hot-encoded labels corresponding to the questions in inputs
+                    生成数据，输出两个矩阵：
+                    （1）输入imputs:一组问题（16个），其中每个问题是一个大小[sent_length，vocabulary_size]且每个单词一个热编码的张量
+        (2) labels_ohe:与输入对应的问题的one-hot-encoded标签
+        '''
+        global sent_length,num_classes
+        global dictionary, all_labels
+        
+        # Numpy arrays holding input and label data
+        inputs = np.zeros((self.batch_size,sent_length,vocabulary_size),dtype=np.float32)
+        labels_ohe = np.zeros((self.batch_size,num_classes),dtype=np.float32)
+        
+        # When we reach the end of the dataset
+        # start from beginning
+        if self.data_index + self.batch_size >= self.text_size:
+            self.data_index = 0
+            
+        # For each question in the dataset
+        for qi,que in enumerate(self.questions[self.data_index:self.data_index+self.batch_size]):
+            # For each word in the question
+            for wi,word in enumerate(que): 
+                # Set the element at the word ID index to 1
+                # this gives the one-hot-encoded vector of that word
+                inputs[qi,wi,dictionary[word]] = 1.0
+            
+            # Set the index corrsponding to that particular class to 1
+            labels_ohe[qi,all_labels.index(self.labels[self.data_index + qi])] = 1.0
+        
+        # Update the data index to get the next batch of data
+        self.data_index = (self.data_index + self.batch_size)%self.text_size
+            
+        return inputs,labels_ohe
+    
+    def return_index(self):
+        # Get the current index of data
+        return self.data_index
+
+# 这里测试一下批量生成数据
+sample_gen = BatchGenerator(batch_size,train_questions,train_labels)
+# 生成批量数据1
+sample_batch_inputs,sample_batch_labels = sample_gen.generate_batch()
+# 生成批量数据1
+sample_batch_inputs_2,sample_batch_labels_2 = sample_gen.generate_batch()
+
+# Make sure that we infact have the question 0 as the 0th element of our batch
+# 确保我们将问题0作为批次的第0个元素
+assert np.all(np.asarray([dictionary[w] for w in train_questions[0]],dtype=np.int32) 
+              == np.argmax(sample_batch_inputs[0,:,:],axis=1))
+
+# Print some data labels we obtained
+print('Sample batch labels')
+print(np.argmax(sample_batch_labels,axis=1))
+print(np.argmax(sample_batch_labels_2,axis=1))
+
+'''
+Sample batch labels
+[3 4 3 4 5 2 2 2 3 2 0 3 2 2 4 1]
+[3 0 3 3 0 4 2 3 3 4 2 1 4 1 5 4]
+'''
+
+# ======================== Sentence Classifying Convolution Neural Network CNN句子分类
+# === Defining hyperparameters and inputs 定义超参数和输入
+
+batch_size = 32
+# 在卷积层使用不同大小的滤波器
+filter_sizes = [3,5,7] 
+
+# inputs and labels
+sent_inputs = tf.placeholder(shape=[batch_size,sent_length,vocabulary_size],dtype=tf.float32,name='sentence_inputs')
+sent_labels = tf.placeholder(shape=[batch_size,num_classes],dtype=tf.float32,name='sentence_labels')
+
+# === Defining Model Parameters 定义模型参数
+# 此模型有3层卷积层和一个全连接输出层
+
+# 3 filters with different context window sizes (3,5,7)
+# Each of this filter spans the full one-hot-encoded length of each word and the context window width
+
+# Weights of the first parallel layer
+w1 = tf.Variable(tf.truncated_normal([filter_sizes[0],vocabulary_size,1],stddev=0.02,dtype=tf.float32),name='weights_1')
+b1 = tf.Variable(tf.random_uniform([1],0,0.01,dtype=tf.float32),name='bias_1')
+
+# Weights of the second parallel layer
+w2 = tf.Variable(tf.truncated_normal([filter_sizes[1],vocabulary_size,1],stddev=0.02,dtype=tf.float32),name='weights_2')
+b2 = tf.Variable(tf.random_uniform([1],0,0.01,dtype=tf.float32),name='bias_2')
+
+# Weights of the third parallel layer
+w3 = tf.Variable(tf.truncated_normal([filter_sizes[2],vocabulary_size,1],stddev=0.02,dtype=tf.float32),name='weights_3')
+b3 = tf.Variable(tf.random_uniform([1],0,0.01,dtype=tf.float32),name='bias_3')
+
+# Fully connected layer
+w_fc1 = tf.Variable(tf.truncated_normal([len(filter_sizes),num_classes],stddev=0.5,dtype=tf.float32),name='weights_fulcon_1')
+b_fc1 = tf.Variable(tf.random_uniform([num_classes],0,0.01,dtype=tf.float32),name='bias_fulcon_1')
+
+# Defining Inference of the CNN 定义CNN的前向传播
+# Calculate the output for all the filters with a stride 1
+# We use relu activation as the activation function
+h1_1 = tf.nn.relu(tf.nn.conv1d(sent_inputs,w1,stride=1,padding='SAME') + b1)
+h1_2 = tf.nn.relu(tf.nn.conv1d(sent_inputs,w2,stride=1,padding='SAME') + b2)
+h1_3 = tf.nn.relu(tf.nn.conv1d(sent_inputs,w3,stride=1,padding='SAME') + b3)
+
+# Pooling over time operation
+
+# This is doing the max pooling. Thereare two options to do the max pooling
+# 1. Use tf.nn.max_pool operation on a tensor made by concatenating h1_1,h1_2,h1_3 and converting that tensor to 4D
+# (Because max_pool takes a tensor of rank >= 4 )
+# 2. Do the max pooling separately for each filter output and combine them using tf.concat 
+# (this is the one used in the code)
+
+h2_1 = tf.reduce_max(h1_1,axis=1)
+h2_2 = tf.reduce_max(h1_2,axis=1)
+h2_3 = tf.reduce_max(h1_3,axis=1)
+
+h2 = tf.concat([h2_1,h2_2,h2_3],axis=1)
+
+# Calculate the fully connected layer output (no activation)
+# Note: since h2 is 2d [batch_size,number of parallel filters] 
+# reshaping the output is not required as it usually do in CNNs
+logits = tf.matmul(h2,w_fc1) + b_fc1
+
+# === Model Loss and the Optimizer
+# Loss (Cross-Entropy)
+loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=sent_labels,logits=logits))
+
+# Momentum Optimizer
+optimizer = tf.train.MomentumOptimizer(learning_rate=0.01,momentum=0.9).minimize(loss)
+
+# === Model Predictions
+predictions = tf.argmax(tf.nn.softmax(logits),axis=1)
+
+# === Running Our Model to Classify Sentences
+# With filter widths [3,5,7] and batch_size 32 the algorithm 
+# achieves around ~90% accuracy on test dataset (50 epochs). 
+# From batch sizes [16,32,64] I found 32 to give best performance
+
+session = tf.InteractiveSession()
+
+num_steps = 50 # Number of epochs the algorithm runs for
+
+# Initialize all variables
+tf.global_variables_initializer().run()
+print('Initialized\n')
+
+# Define data batch generators for train and test data
+train_gen = BatchGenerator(batch_size,train_questions,train_labels)
+test_gen = BatchGenerator(batch_size,test_questions,test_labels)
+
+# How often do we compute the test accuracy
+test_interval = 1
+
+# Compute accuracy for a given set of predictions and labels
+def accuracy(labels,preds):
+    return np.sum(np.argmax(labels,axis=1)==preds)/labels.shape[0]
+
+# Running the algorithm
+for step in range(num_steps):
+    avg_loss = []
+    
+    # A single traverse through the whole training set
+    for tr_i in range((len(train_questions)//batch_size)-1):
+        # Get a batch of data
+        tr_inputs, tr_labels = train_gen.generate_batch()
+        # Optimize the network and compute the loss
+        l,_ = session.run([loss,optimizer],feed_dict={sent_inputs: tr_inputs, sent_labels: tr_labels})
+        avg_loss.append(l)
+
+    # Print average loss
+    print('Train Loss at Epoch %d: %.2f'%(step,np.mean(avg_loss)))
+    test_accuracy = []
+    
+    # Compute the test accuracy
+    if (step+1)%test_interval==0:        
+        for ts_i in range((len(test_questions)-1)//batch_size):
+            # Get a batch of test data
+            ts_inputs,ts_labels = test_gen.generate_batch()
+            # Get predictions for that batch
+            preds = session.run(predictions,feed_dict={sent_inputs: ts_inputs, sent_labels: ts_labels})
+            # Compute test accuracy
+            test_accuracy.append(accuracy(ts_labels,preds))
+        
+        # Display the mean test accuracy
+        print('Test accuracy at Epoch %d: %.3f'%(step,np.mean(test_accuracy)*100.0))
+
+
+'''
+Initialized
+
+Train Loss at Epoch 0: 1.74
+Test accuracy at Epoch 0: 17.917
+Train Loss at Epoch 1: 1.67
+Test accuracy at Epoch 1: 27.500
+Train Loss at Epoch 2: 1.62
+...
+Train Loss at Epoch 48: 0.18
+Test accuracy at Epoch 48: 90.000
+Train Loss at Epoch 49: 0.17
+Test accuracy at Epoch 49: 90.000
+'''
+#保存计算图
+#使用tf.get_default_graph()保存默认的TensorBoard,事件文件保存在'./Chapter03_Board'下
+#而后可以在命令行输入: tensorboard --logdir=./TensorBoard 启动tensorboard,
+#然后在浏览器中查看张量的计算图(见3.4.3_Variable.png)
+writer = tf.summary.FileWriter(logdir='./TensorBoard',graph=tf.get_default_graph())
+writer.flush()
+
+

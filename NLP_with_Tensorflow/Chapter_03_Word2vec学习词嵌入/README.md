@@ -1,4 +1,4 @@
-# Chapter02 理解TensorFlow
+# Chapter03 Word2vec
 
 ## 3.1 单词的表示或含义是什么
 
